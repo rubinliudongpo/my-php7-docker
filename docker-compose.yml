@@ -1,0 +1,118 @@
+version: "2"
+services:  
+  web:  
+    image: nginx:latest  
+    ports:  
+      - "80:80" 
+    restart: always
+    volumes:  
+      - ./app:/www/web
+      - ./services/web/nginx/conf:/etc/nginx
+      - ./services/web/nginx/logs:/www/web_logs
+    networks:
+        - code-network
+    depends_on:
+      - php
+  mysql:  
+    image: mysql:5.7 
+    volumes:  
+      - ./databases/mysql/data:/var/lib/mysql
+      - ./databases/mysql/sample_db:/var/sample_db
+      - ./databases/mysql/conf.d:/etc/mysql/conf.d
+    ports:  
+      - "3306:3306" 
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=yourmysqlpassword
+    networks:
+      - code-network
+  php:
+    build: 
+      context: ./services/php/docker/
+    restart: always
+    volumes:  
+      - ./app:/www/web
+      - ./services/php/etc/php7.1.13.ini:/usr/local/etc/php/conf.d/php7.1.13.ini
+    depends_on:
+      - mongodb
+      - mysql
+    networks:
+        - code-network  
+  mongodb:
+    image: mongo:3.7.3
+    restart: always
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/data/logs
+    volumes:
+      - ./databases/mongodb/data:/data/db
+      - ./databases/mongodb/sample_db:/data/sample_db
+      - ./databases/mongodb/logs:/data/logs
+      - ./databases/mongodb/etc/mongod.conf:/etc/mongod.conf
+    ports:
+      - 27017:27017
+    networks:
+      - code-network
+  xunsearch:
+    image: hightman/xunsearch:latest
+    restart: always
+    volumes:
+      - ./databases/xunsearch/data:/usr/local/xunsearch/data
+    networks:
+      - code-network 
+  redis:
+    image: redis:4.0
+    restart: always
+    ports:
+      - "6379:6379"
+    environment:
+        REDIS_PASS_FILE: /run/secrets/redis-password
+    command: [
+      "bash", "-c",
+      '
+       docker-entrypoint.sh
+       --requirepass "$$(cat $$REDIS_PASS_FILE)"
+      '
+    ]
+    volumes:
+      - ./databases/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./databases/redis/data:/data
+      - ./databases/redis/etc/redis-password:/run/secrets/redis-password
+    networks:
+      - code-network
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    links:
+      - mysql
+    ports:
+      - "8081:80"
+    environment:
+      MYSQL_USERNAME: root
+      MYSQL_ROOT_PASSWORD: fecshopxfd3ffaads123456
+      PMA_HOST: mysql
+    networks:
+      - code-network
+  mailhog:
+    hostname: localhost
+    image: mailhog/mailhog:latest
+    ports:
+      - "8025:8025"
+#  rockmongo:
+#    image: jhaoheng/rockmongo
+#    container_name: rockmongo
+#    ports:
+#      - "27018:80"
+#    volumes:
+#      - ./services/rockmongo/config.php:/app/config.php
+#    networks:
+#      - code-network
+  ssh:
+    build:
+      context: ./services/ssh/docker/
+    networks:
+      - code-network
+    ports:
+      - "2222:22"
+networks:
+  code-network:
+    driver: bridge
