@@ -10,3 +10,5 @@ Based on the Docker images, built to be fast, small and extendable LEMP stack.
 * [MySQL]
 * [MongoDB]
 * [Redis]
+* [GitLab-CE] Chinese Version
+
